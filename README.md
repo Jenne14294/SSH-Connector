@@ -40,3 +40,8 @@
 
 - 密碼將進行加密儲存，避免敏感資訊外洩。
 - 支援簡單的登入資訊管理，讓使用者無需每次手動輸入登入資訊。
+
+## 下載方式
+
+您可以從 [GitHub Release](https://github.com/SSH-Connector/ssh-connector/releases) 頁面下載最新版本的 **SSH 連接器**。下載完成後，解壓縮 ZIP 檔案並執行其中的應用程式來開始使用。
+

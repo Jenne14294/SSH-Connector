@@ -47,7 +47,8 @@ class SSHClientGUI(QWidget):
         # 顯示圖示
         self.tray_icon.show()
 
-        self.setGeometry(300, 300, 250, 150)
+        self.setGeometry(700, 400, 500, 300)  # 設置更大的視窗
+
 
     def update_menu(self, is_connected):
         """根據是否連接來更新菜單"""
@@ -56,8 +57,8 @@ class SSHClientGUI(QWidget):
             self.upload_action.triggered.connect(self.logout)
             
             # 在「退出」之前插入「快速上傳」
-            self.menu.insertAction(self.quit_action, self.upload_action)
-            self.menu.insertAction(self.quit_action, self.logout_action)
+            # self.menu.insertAction(self.quit_action, self.upload_action)
+            # self.menu.insertAction(self.quit_action, self.logout_action)
             self.status_action.setText(f"連接狀態: 🟢 ({self.current_ip} - {self.current_user})")
         else:
             self.menu.removeAction(self.upload_action)  # 移除「快速上傳」
@@ -385,28 +386,28 @@ class SSHClientGUI(QWidget):
             self.show_error("連線失敗", f"輸入不可為空")
             return
 
-        # try:
-            # 嘗試建立 SSH 連線
-        self.ssh_client = paramiko.SSHClient()
-        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.ssh_client.connect(ip, username=user, password=password)
-        self.sftp_client = self.ssh_client.open_sftp()
+        try:
+            #嘗試建立 SSH 連線
+            self.ssh_client = paramiko.SSHClient()
+            self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            self.ssh_client.connect(ip, username=user, password=password)
+            self.sftp_client = self.ssh_client.open_sftp()
 
-            # 連線成功後更新 UI
-        self.current_ip = ip
-        self.current_user = user
-        self.connection_label.setText(f"當前連線: {self.current_ip} ({self.current_user})")
-        self.current_path = f"/home/{user}"
-        self.load_directory(self.current_path)
-        self.stacked_widget.setCurrentWidget(self.main_widget)
-        self.update_menu(True)  # 更新菜單，顯示「快速上傳」
+                # 連線成功後更新 UI
+            self.current_ip = ip
+            self.current_user = user
+            self.connection_label.setText(f"當前連線: {self.current_ip} ({self.current_user})")
+            self.current_path = f"/home/{user}"
+            self.load_directory(self.current_path)
+            self.stacked_widget.setCurrentWidget(self.main_widget)
+            self.update_menu(True)  # 更新菜單，顯示「快速上傳」
 
-            # 只有當「記住登入資訊」被勾選時，才存儲登入資訊
-        if self.remember_checkbox.isChecked():
-            self.save_login_info(ip, user, password)
+                # 只有當「記住登入資訊」被勾選時，才存儲登入資訊
+            if self.remember_checkbox.isChecked():
+                self.save_login_info(ip, user, password)
 
-        # except Exception as e:
-        #     self.show_error("連線失敗", f"無法連線: {e}")
+        except Exception as e:
+            self.show_error("連線失敗", f"無法連線: {e}")
 
 
     def create_folder(self):
@@ -421,6 +422,9 @@ class SSHClientGUI(QWidget):
 
     def delete_selected_files(self):
         checked_items = []
+
+        if len(checked_items) == 0:
+            return
 
         # 先把所有勾選的檔案儲存起來
         for index in range(self.file_list.count()):
@@ -467,8 +471,6 @@ class SSHClientGUI(QWidget):
         try:
             self.file_list.clear()
             self.current_path = path
-
-            print(path, self.user_input.text())
 
             if path == "/home":
                 # 在家目錄隱藏所有按鈕
@@ -581,7 +583,6 @@ class SSHClientGUI(QWidget):
                 checked_items.append(item)  # 如果勾選了，則加入列表
 
         if not checked_items:
-            self.show_error("下載錯誤", "請勾選檔案進行下載")
             return
 
         # 讓使用者選擇下載位置
@@ -607,7 +608,6 @@ class SSHClientGUI(QWidget):
         
         # 如果沒有選擇檔案
         if not local_paths:
-            self.show_error("上傳錯誤", "請選擇檔案進行上傳")
             return
         
         # 上傳每一個選擇的檔案
@@ -624,14 +624,23 @@ class SSHClientGUI(QWidget):
 
 
     def logout(self):
-        if self.ssh_client:
-            self.sftp_client.close()
-            self.ssh_client.close()
-        self.stacked_widget.setCurrentWidget(self.login_widget)
-        self.ip_input.clear()
-        self.user_input.clear()
-        self.password_input.clear()
-        self.update_menu(False)  # 更新為已連接狀態
+        # 彈出確認登出的對話框
+        reply = QMessageBox.question(self, '確認登出', '確定要登出嗎？',
+                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+        # 如果用戶選擇「是」
+        if reply == QMessageBox.Yes:
+            if self.ssh_client:
+                self.sftp_client.close()
+                self.ssh_client.close()
+            
+            # 清除表單資料並返回登錄界面
+            self.stacked_widget.setCurrentWidget(self.login_widget)
+            self.ip_input.clear()
+            self.user_input.clear()
+            self.password_input.clear()
+            self.login_combobox.setCurrentIndex(-1)
+            self.update_menu(False)  # 更新為已連接狀態
 
     def show_error(self, title, message):
         msg = QMessageBox()

@@ -657,6 +657,14 @@ class SSHClientGUI(QWidget):
         msg.exec_()  # 顯示訊息框
 
 if __name__ == "__main__":
+    # settings = QSettings("my_app", "login_info")
+    # for key in settings.allKeys():
+    #     settings.remove(key)
+
+    # security_settings = QSettings("my_app_security", "settings")  # 存資安提示
+    # for key in security_settings.allKeys():
+    #     security_settings.remove(key)
+    
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("./icons/icon.png"))
     window = SSHClientGUI()

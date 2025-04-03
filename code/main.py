@@ -437,6 +437,18 @@ class SSHClientGUI(QWidget):
             if checkbox.isChecked():  # 檢查是否被選中
                 checked_items.append(item)
 
+        # 提示使用者確認刪除
+        reply = QMessageBox.question(
+            self, 
+            "確認刪除", 
+            f"您確定要刪除選中的 {len(checked_items)} 個檔案嗎？", 
+            QMessageBox.Yes | QMessageBox.No, 
+            QMessageBox.No
+        )
+
+        if reply == QMessageBox.No:
+            return  # 如果使用者選擇「否」，則不進行刪除
+
         # 使用 for 迴圈直接遍歷 checked_items
         for item_to_delete in checked_items:
             file_name = item_to_delete.text()
@@ -454,11 +466,6 @@ class SSHClientGUI(QWidget):
 
         # 刪除後重新載入目錄
         self.load_directory(self.current_path)
-    
-    def delete_file(self):
-        reply = QMessageBox.question(self, '確認刪除', f"確定要刪除選中的檔案/資料夾嗎?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        if reply == QMessageBox.Yes:
-            self.delete_selected_files()
     
     def load_directory(self, path):
         try:

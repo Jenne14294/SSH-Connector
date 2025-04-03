@@ -3,7 +3,7 @@ import paramiko
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLineEdit, QListWidget, QLabel, QFileDialog, QTextEdit, QStackedWidget, 
                              QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QMessageBox, QInputDialog,
-                             QCheckBox, QListWidgetItem, QComboBox)
+                             QCheckBox, QListWidgetItem, QComboBox, QSystemTrayIcon, QMenu, QAction)
                              
 from PyQt5.QtGui import QPixmap, QFont, QIcon
 from PyQt5.QtCore import Qt, QSettings, QSize
@@ -19,6 +19,60 @@ class SSHClientGUI(QWidget):
         self.current_ip = ""
         self.current_user = ""
         self.encrypt_key = self.load_encryption_key()
+
+        # 設置圖示
+        self.tray_icon = QSystemTrayIcon(self)
+        icon = QIcon("./icons/icon.png")  # 使用你的圖示路徑
+        self.tray_icon.setIcon(icon)
+
+        # 設置右鍵菜單
+        self.menu = QMenu(self)
+        self.open_action = QAction("開啟", self)
+        self.quit_action = QAction("退出", self)
+        self.status_action = QAction("連接狀態: 🟥", self)  # 新增顯示狀態的選項
+        self.upload_action = QAction("上傳", self)  # 快速上傳選項
+        self.logout_action = QAction("登出", self)  # 快速上傳選項
+
+        # 連接右鍵動作
+        self.open_action.triggered.connect(self.show)  # 顯示主視窗
+        self.quit_action.triggered.connect(self.quit_app)  # 退出應用程式
+
+        self.menu.addAction(self.open_action)
+        self.menu.addAction(self.status_action)  # 把狀態選項加入菜單
+        self.menu.addAction(self.quit_action)
+
+        # 將菜單設置給系統托盤
+        self.tray_icon.setContextMenu(self.menu)
+
+        # 顯示圖示
+        self.tray_icon.show()
+
+        self.setGeometry(300, 300, 250, 150)
+
+    def update_menu(self, is_connected):
+        """根據是否連接來更新菜單"""
+        if is_connected:
+            self.upload_action.triggered.connect(self.upload_file)
+            self.upload_action.triggered.connect(self.logout)
+            
+            # 在「退出」之前插入「快速上傳」
+            self.menu.insertAction(self.quit_action, self.upload_action)
+            self.menu.insertAction(self.quit_action, self.logout_action)
+            self.status_action.setText(f"連接狀態: 🟢 ({self.current_ip} - {self.current_user})")
+        else:
+            self.menu.removeAction(self.upload_action)  # 移除「快速上傳」
+            self.menu.removeAction(self.logout_action)  # 移除「快速上傳」
+            self.status_action.setText("連接狀態: 🟥")
+
+
+    def quit_app(self):
+        """退出應用程序"""
+        QApplication.quit()
+
+    def closeEvent(self, event):
+        """當視窗關閉時，將其隱藏到工具列，而不是退出應用"""
+        event.ignore()  # 防止視窗關閉
+        self.hide()  # 隱藏視窗
 
     def initUI(self):
         self.setStyleSheet("""
@@ -307,8 +361,6 @@ class SSHClientGUI(QWidget):
         key = f"{ip} - {user}"  # 確保符合存儲格式
         encrypted_password = self.encrypt_password(password)
 
-        print(key, encrypted_password)
-
         # 檢查是否已顯示過資安提示
         if not security_settings.value("security_prompt_shown", False):
             reply = QMessageBox.question(self, "資安提示",
@@ -329,31 +381,36 @@ class SSHClientGUI(QWidget):
         self.load_saved_logins()  # 重新載入已儲存的登入資訊
 
     def connect_ssh(self):
-        ip = self.ip_input.text().strip()
-        user = self.user_input.text().strip()
+        ip = self.ip_input.text()
+        user = self.user_input.text()
         password = self.password_input.text()
 
-        try:
+        if not ip and not user and not password:
+            self.show_error("連線失敗", f"輸入不可為空")
+            return
+
+        # try:
             # 嘗試建立 SSH 連線
-            self.ssh_client = paramiko.SSHClient()
-            self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            self.ssh_client.connect(ip, username=user, password=password)
-            self.sftp_client = self.ssh_client.open_sftp()
+        self.ssh_client = paramiko.SSHClient()
+        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        self.ssh_client.connect(ip, username=user, password=password)
+        self.sftp_client = self.ssh_client.open_sftp()
 
             # 連線成功後更新 UI
-            self.current_ip = ip
-            self.current_user = user
-            self.connection_label.setText(f"當前連線: {self.current_ip} ({self.current_user})")
-            self.current_path = f"/home/{user}"
-            self.load_directory(self.current_path)
-            self.stacked_widget.setCurrentWidget(self.main_widget)
+        self.current_ip = ip
+        self.current_user = user
+        self.connection_label.setText(f"當前連線: {self.current_ip} ({self.current_user})")
+        self.current_path = f"/home/{user}"
+        self.load_directory(self.current_path)
+        self.stacked_widget.setCurrentWidget(self.main_widget)
+        self.update_menu(True)  # 更新菜單，顯示「快速上傳」
 
             # 只有當「記住登入資訊」被勾選時，才存儲登入資訊
-            if self.remember_checkbox.isChecked():
-                self.save_login_info(ip, user, password)
+        if self.remember_checkbox.isChecked():
+            self.save_login_info(ip, user, password)
 
-        except Exception as e:
-            self.show_error("連線失敗", f"無法連線: {e}")
+        # except Exception as e:
+        #     self.show_error("連線失敗", f"無法連線: {e}")
 
 
     def create_folder(self):
@@ -541,6 +598,7 @@ class SSHClientGUI(QWidget):
         self.ip_input.clear()
         self.user_input.clear()
         self.password_input.clear()
+        self.update_menu(False)  # 更新為已連接狀態
 
     def show_error(self, title, message):
         msg = QMessageBox()
@@ -557,11 +615,8 @@ class SSHClientGUI(QWidget):
         msg.exec_()  # 顯示訊息框
 
 if __name__ == "__main__":
-    # settings = QSettings("my_app", "login_info")
-    # for key in settings.allKeys():
-    #     settings.remove(key)
-
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon("./icons/icon.png"))
     window = SSHClientGUI()
     window.show()
     sys.exit(app.exec_())

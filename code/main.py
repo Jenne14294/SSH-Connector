@@ -236,29 +236,25 @@ class SSHClientGUI(QWidget):
         self.connection_label.setAlignment(Qt.AlignCenter)
         main_layout.addWidget(self.connection_label)
 
-        self.logout_btn = QPushButton("登出", self)
-        self.logout_btn.clicked.connect(self.logout)
-        button_layout.addWidget(self.logout_btn)
-
-         # 建立資料夾和刪除檔案按鈕並排
-        folder_layout = QHBoxLayout()
         self.create_folder_btn = QPushButton("建立資料夾", self)
         self.create_folder_btn.clicked.connect(self.create_folder)
-        folder_layout.addWidget(self.create_folder_btn)
+        button_layout.addWidget(self.create_folder_btn)
 
         self.delete_file_btn = QPushButton("刪除檔案", self)
         self.delete_file_btn.clicked.connect(self.delete_selected_files)
-        folder_layout.addWidget(self.delete_file_btn)
+        button_layout.addWidget(self.delete_file_btn)
 
-        main_layout.addLayout(folder_layout)
+        self.upload_btn = QPushButton("上傳檔案", self)
+        self.upload_btn.clicked.connect(self.upload_file)
+        button_layout.addWidget(self.upload_btn)
 
         self.download_btn = QPushButton("下載檔案", self)
         self.download_btn.clicked.connect(self.download_file)
         button_layout.addWidget(self.download_btn)
         
-        self.upload_btn = QPushButton("上傳檔案", self)
-        self.upload_btn.clicked.connect(self.upload_file)
-        button_layout.addWidget(self.upload_btn)
+        self.logout_btn = QPushButton("登出", self)
+        self.logout_btn.clicked.connect(self.logout)
+        button_layout.addWidget(self.logout_btn)
         
         main_layout.addLayout(button_layout)
         
@@ -471,7 +467,37 @@ class SSHClientGUI(QWidget):
         try:
             self.file_list.clear()
             self.current_path = path
-            self.file_list.addItem("上一頁")  # 返回上一層
+
+            print(path, self.user_input.text())
+
+            if path == "/home":
+                # 在家目錄隱藏所有按鈕
+                self.delete_file_btn.hide()
+                self.create_folder_btn.hide()
+                self.upload_btn.hide()
+                self.download_btn.hide()
+
+            else:
+                self.file_list.addItem("上一頁")  # 返回上一層
+                # 當進入其他目錄，根據不同條件隱藏或顯示按鈕
+                if self.user_input.text() not in path:
+                    # 其他人的目錄，隱藏刪除和創建按鈕，顯示上傳和下載
+                    self.delete_file_btn.hide()
+                    self.create_folder_btn.hide()
+                    self.upload_btn.show()
+                    self.download_btn.show()
+
+                else:
+                    # 自己的家目錄，顯示所有按鈕
+                    self.delete_file_btn.show()
+                    self.create_folder_btn.show()
+                    self.upload_btn.show()
+                    self.download_btn.show()
+
+            # 確保登出按鈕永遠顯示
+            self.logout_btn.show()
+
+
             for item in self.sftp_client.listdir(path):
                 if not item.startswith('.'):  # 不顯示隱藏檔案
                     item_widget = QListWidgetItem(item)
@@ -493,7 +519,7 @@ class SSHClientGUI(QWidget):
             self.text_preview.clear()  # 清空文字預覽
             self.text_preview.setVisible(False)  # 隱藏文字預覽
             self.preview_area.setVisible(False)  # 隱藏圖片預覽
-            self.current_path = "/".join(self.current_path.split("/")[:-1]) or "/home/jenne14294"
+            self.current_path = "/".join(self.current_path.split("/")[:-1]) or "/home"
             self.load_directory(self.current_path)
         else:
             new_path = f"{self.current_path}/{selected_item}"

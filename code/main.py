@@ -423,9 +423,6 @@ class SSHClientGUI(QWidget):
     def delete_selected_files(self):
         checked_items = []
 
-        if len(checked_items) == 0:
-            return
-
         # 先把所有勾選的檔案儲存起來
         for index in range(self.file_list.count()):
             item = self.file_list.item(index)
@@ -436,6 +433,9 @@ class SSHClientGUI(QWidget):
 
             if checkbox.isChecked():  # 檢查是否被選中
                 checked_items.append(item)
+
+        if len(checked_items) == 0:
+            return
 
         # 提示使用者確認刪除
         reply = QMessageBox.question(
@@ -544,7 +544,7 @@ class SSHClientGUI(QWidget):
     def preview_file(self, remote_path):
         try:
             # 檢查是否為圖片格式
-            if remote_path.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+            if remote_path.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.jfif', '.jxl', '.webp', '.heic')):
                 with self.sftp_client.open(remote_path, 'rb') as file:
                     content = file.read()
                     pixmap = QPixmap()

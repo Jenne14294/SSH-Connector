@@ -1,4 +1,5 @@
 import sys
+import base64
 import paramiko
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLineEdit, QListWidget, QLabel, QFileDialog, QTextEdit, QStackedWidget, 
@@ -275,7 +276,11 @@ class SSHClientGUI(QWidget):
         # 如果您沒有金鑰，可以使用以下方式生成一個：
         # key = Fernet.generate_key()
         # 保存到文件或者應用配置中
-        return b'aqFDRxBW0UMR4x7yhgsFdN29-BHvMk2K8xsYcDs3kHI='  # 請替換為您的加密金鑰
+
+        data_settings = QSettings("secrets", "value")
+        stored_key_str = data_settings.value("key").encode()
+        
+        return stored_key_str  # 請替換為您的加密金鑰
     
     def encrypt_password(self, password):
         # 使用加密金鑰加密密碼
@@ -335,11 +340,10 @@ class SSHClientGUI(QWidget):
         if selected_index >= 0 and " - " in selected_text:
             ip, username = selected_text.split(" - ", 1)  # 解析出 IP 和使用者名稱
             stored_encrypt_password = self.login_combobox.itemData(selected_index)
-            decrypt_password = self.decrypt_password(stored_encrypt_password)
 
             self.ip_input.setText(ip)
             self.user_input.setText(username)
-            self.password_input.setText(decrypt_password)
+            self.password_input.setText(stored_encrypt_password.decode())
 
 
     def toggle_password_visibility(self):
@@ -381,6 +385,9 @@ class SSHClientGUI(QWidget):
         ip = self.ip_input.text()
         user = self.user_input.text()
         password = self.password_input.text()
+
+        password = password.encode()
+        password = self.decrypt_password(password)
 
         if not ip and not user and not password:
             self.show_error("連線失敗", f"輸入不可為空")
@@ -664,7 +671,7 @@ if __name__ == "__main__":
     # security_settings = QSettings("my_app_security", "settings")  # 存資安提示
     # for key in security_settings.allKeys():
     #     security_settings.remove(key)
-    
+
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("./icons/icon.png"))
     window = SSHClientGUI()
